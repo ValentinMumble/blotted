@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import react from '@vitejs/plugin-react';
 import {defineConfig, type Plugin} from 'vite';
+import {localApi} from './local-api.ts';
 
 /**
  * Writes the service worker (sw/sw.js) into the build, with an id that changes with the build and the files it keeps
@@ -28,6 +29,8 @@ const serviceWorker = (): Plugin => ({
 });
 
 export default defineConfig({
-  server: {host: true},
-  plugins: [react(), serviceWorker()],
+  // Port 5190 is Retrospin's and 5191 Rreel's: the three can run side by side.
+  server: {host: true, port: 5194, strictPort: true},
+  // `npm run dev` also answers /api/* from api/ (see local-api.ts).
+  plugins: [react(), serviceWorker(), localApi()],
 });

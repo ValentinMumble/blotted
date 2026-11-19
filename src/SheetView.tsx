@@ -12,7 +12,7 @@ import {
   type Settings,
   type Sheet,
 } from './layout';
-import type {Photo} from './photos';
+import {ADD_PHOTOS_INPUT, openPickerOnKey, type Photo} from './photos';
 
 interface SheetViewProps {
   sheet: Sheet;
@@ -25,7 +25,6 @@ interface SheetViewProps {
   onSelect: (id: string) => void;
   onCrop: (id: string, crop: Crop) => void;
   onStartSwap: (id: string, event: PointerEvent) => void;
-  onAddPhotos: () => void;
   onReplaceWithFile: (id: string, file: File) => void;
 }
 
@@ -44,10 +43,9 @@ export function SheetView(props: SheetViewProps) {
 
   return (
     <div className="sheet-frame" style={{width: actualSize ? `${sheet.width}mm` : undefined}}>
-      <div className="halo" aria-hidden="true" />
       <div className="sheet" style={{aspectRatio: `${sheet.width} / ${sheet.height}`}}>
         {freeSlots.map(slot => (
-          <FreeSlotButton key={`${slot.column}-${slot.row}`} sheet={sheet} slot={slot} onAdd={props.onAddPhotos} />
+          <FreeSlotButton key={`${slot.column}-${slot.row}`} sheet={sheet} slot={slot} />
         ))}
         {placements.map(placement => {
           const photo = photos.get(placement.id);
@@ -73,12 +71,20 @@ export function SheetView(props: SheetViewProps) {
   );
 }
 
-function FreeSlotButton({sheet, slot, onAdd}: {sheet: Sheet; slot: FreeSlot; onAdd: () => void}) {
+function FreeSlotButton({sheet, slot}: {sheet: Sheet; slot: FreeSlot}) {
   return (
-    <button type="button" className="free-slot" data-free-slot="" style={placeOnPage(sheet, slot)} onClick={onAdd}>
+    <label
+      className="free-slot"
+      data-free-slot=""
+      htmlFor={ADD_PHOTOS_INPUT}
+      role="button"
+      tabIndex={0}
+      style={placeOnPage(sheet, slot)}
+      onKeyDown={openPickerOnKey(ADD_PHOTOS_INPUT)}
+    >
       <span aria-hidden="true">+</span>
       <span className="visually-hidden">Add photos</span>
-    </button>
+    </label>
   );
 }
 

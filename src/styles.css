@@ -1,6 +1,6 @@
-/* Layout: a 1970s acid poster. A turning, colour-cycling swirl under a pulsing op-art tunnel fills the desk; chunky
-   solid panels with thick borders and stacked colour shadows hold the tools; the paper stays plain white inside a
-   rainbow halo, so a print looks as it does here. One look, whatever the system theme. No glass on purpose. */
+/* Layout: classic blotter art. A yellow border round a flat scene (blue night, red day, green mountains, sun and
+   moon) with the perforation grid over it fills the desk; white panels with thick black outlines, hard black shadows
+   and colour header bands hold the tools; headings in a bold italic serif, dark red. The paper stays plain white. */
 @property --spin {
   syntax: '<angle>';
   inherits: false;
@@ -8,54 +8,31 @@
 }
 
 :root {
-  --page: #12001f;
-  --night: #1a0030;
-  --panel: #2b0748;
-  --control: #3a0d5e;
-  --ink: #fff6fd;
-  --muted: #f0d8ff;
-  --line: rgba(255, 255, 255, 0.24);
-  --magenta: #ff3cac;
-  --orange: #ff8a00;
-  --yellow: #ffe14d;
-  --acid: #b8ff3c;
-  --cyan: #2de2ff;
-  --violet: #8f4dff;
-  --dark-ink: #1d0428;
-  --danger: #ff7a9a;
-  --rainbow: linear-gradient(
-    90deg,
-    var(--magenta),
-    var(--orange),
-    var(--yellow),
-    var(--acid),
-    var(--cyan),
-    var(--violet),
-    var(--magenta)
-  );
-  --stripes: repeating-linear-gradient(
-    90deg,
-    var(--magenta) 0 40px,
-    var(--orange) 40px 80px,
-    var(--yellow) 80px 120px,
-    var(--acid) 120px 160px,
-    var(--cyan) 160px 200px,
-    var(--violet) 200px 240px
-  );
-  --font-display: 'Shrikhand', 'Cooper Black', Georgia, serif;
+  --yellow: #ffd51f;
+  --moon: #ffd84a;
+  --blue: #22409a;
+  --red: #c1202f;
+  --green: #3bb54a;
+  --maroon: #6e0f16;
+  --ink: #111111;
+  --paper: #ffffff;
+  --muted: #4a4a4a;
+  --soft: #f3f0e6;
+  --line: #111111;
+  --font-display: 'Tinos', 'Times New Roman', Times, serif;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --radius: 26px;
-  --topbar-height: 66px;
-  color-scheme: dark;
+  --radius: 8px;
+  --topbar-height: 64px;
+  --border: 12px;
+  color-scheme: light;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* The page colour sits on <html> so the swirl, painted below <body>, shows through. */
 html {
-  background: var(--page);
+  background: var(--yellow);
 }
 
 body {
@@ -65,91 +42,6 @@ body {
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* The swirl: a colour wheel turning one way while its colours cycle. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: -60vmax;
-  z-index: -2;
-  background: conic-gradient(
-    from 0deg,
-    var(--magenta),
-    var(--orange),
-    var(--yellow),
-    var(--acid),
-    var(--cyan),
-    var(--violet),
-    var(--magenta),
-    var(--yellow),
-    var(--cyan),
-    var(--magenta)
-  );
-  animation:
-    swirl 60s linear infinite,
-    cycle 14s linear infinite;
-}
-
-/* The tunnel: dark op-art rings that breathe in and out over the swirl. */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(ellipse at 50% 42%, transparent 0 18%, rgba(18, 0, 31, 0.85) 95%),
-    repeating-radial-gradient(circle at 50% 42%, rgba(18, 0, 31, 0.82) 0 9px, rgba(18, 0, 31, 0) 11px 22px);
-  transform-origin: 50% 42%;
-  animation: tunnel 7s ease-in-out infinite alternate;
-}
-
-@keyframes swirl {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@keyframes cycle {
-  to {
-    filter: hue-rotate(360deg);
-  }
-}
-
-@keyframes tunnel {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(1.35);
-  }
-}
-
-@keyframes flow {
-  to {
-    background-position: 300% 0;
-  }
-}
-
-@keyframes march {
-  to {
-    background-position: 240px 0;
-  }
-}
-
-@keyframes spin {
-  to {
-    --spin: 360deg;
-  }
-}
-
-@keyframes wave {
-  from {
-    transform: translateY(-3px) rotate(-4deg);
-  }
-  to {
-    transform: translateY(4px) rotate(4deg);
-  }
 }
 
 button,
@@ -166,7 +58,7 @@ input {
 }
 
 :focus-visible {
-  outline: 3px solid var(--acid);
+  outline: 3px solid var(--blue);
   outline-offset: 2px;
 }
 
@@ -179,7 +71,147 @@ input {
   white-space: nowrap;
 }
 
-/* The top bar: night purple over a marching rainbow stripe. */
+/* The file pickers stay in the page, out of sight: their labels open them, which iPhone Safari needs. */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+label.button,
+label.free-slot {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@keyframes spin {
+  to {
+    --spin: 360deg;
+  }
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes march {
+  to {
+    background-position: 160px 0;
+  }
+}
+
+/* The scene behind everything, inside the yellow border. */
+.backdrop {
+  position: fixed;
+  inset: var(--border);
+  z-index: -1;
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  background: var(--green);
+}
+
+/* The sheet's perforations, over the whole scene. */
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Cpath d='M0 .5H26M.5 0V26' fill='none' stroke='%23000' stroke-opacity='.16' stroke-dasharray='3 2'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.scene * {
+  vector-effect: non-scaling-stroke;
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.night {
+  fill: var(--blue);
+  stroke: none;
+}
+
+.day {
+  fill: var(--red);
+  stroke: none;
+}
+
+.zigzag {
+  fill: var(--ink);
+}
+
+.mountain {
+  fill: var(--green);
+}
+
+.snow {
+  fill: var(--paper);
+}
+
+.moon,
+.sun {
+  position: absolute;
+  top: calc(var(--topbar-height) + 4px);
+  width: clamp(110px, 17vw, 220px);
+  height: auto;
+}
+
+.moon {
+  left: clamp(4px, 2vw, 40px);
+}
+
+.sun {
+  right: clamp(4px, 2vw, 40px);
+}
+
+.moon-body {
+  fill: var(--moon);
+  stroke: #26324a;
+  stroke-width: 10;
+}
+
+.face {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.star-light {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.ray {
+  fill: var(--ink);
+}
+
+.sun-rays {
+  transform-origin: 0 0;
+  animation: turn 80s linear infinite;
+}
+
+.sun-body {
+  fill: var(--moon);
+  stroke: var(--ink);
+  stroke-width: 4;
+}
+
+/* The top bar: the yellow border's colour, a black rule under it, the name in dark red italic. */
 .topbar {
   position: sticky;
   top: 0;
@@ -191,19 +223,8 @@ input {
   min-height: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
   padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0
     max(16px, env(safe-area-inset-left, 0px));
-  background: var(--night);
-}
-
-.topbar::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -7px;
-  height: 7px;
-  background: var(--stripes);
-  background-size: 240px 100%;
-  animation: march 5s linear infinite;
+  border-bottom: 3px solid var(--ink);
+  background: var(--yellow);
 }
 
 .brand {
@@ -214,49 +235,19 @@ input {
 }
 
 .brand-mark {
-  display: inline-block;
   font-size: 28px;
   line-height: 1;
-  animation: wave 1.6s ease-in-out infinite alternate;
 }
 
-/* The wordmark: each letter its own colour, bobbing on a wave, with a stacked 3D shadow. */
 .brand h1 {
-  display: flex;
   margin: 0;
+  color: var(--maroon);
   font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 400;
-  line-height: 1.15;
-  filter: drop-shadow(2px 2px 0 var(--dark-ink)) drop-shadow(2px 2px 0 var(--violet));
-}
-
-.brand h1 span {
-  display: inline-block;
-  animation: wave 1.4s ease-in-out infinite alternate;
-  animation-delay: calc(var(--letter) * -0.2s);
-}
-
-.brand h1 span:nth-child(7n + 1) {
-  color: var(--magenta);
-}
-.brand h1 span:nth-child(7n + 2) {
-  color: var(--orange);
-}
-.brand h1 span:nth-child(7n + 3) {
-  color: var(--yellow);
-}
-.brand h1 span:nth-child(7n + 4) {
-  color: var(--acid);
-}
-.brand h1 span:nth-child(7n + 5) {
-  color: var(--cyan);
-}
-.brand h1 span:nth-child(7n + 6) {
-  color: var(--violet);
-}
-.brand h1 span:nth-child(7n) {
-  color: var(--magenta);
+  font-size: 38px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 .actions {
@@ -266,17 +257,17 @@ input {
   justify-content: flex-end;
 }
 
-/* Buttons: chunky, with a hard shadow that presses in. */
+/* Buttons: flat colour, black outline, a hard shadow that presses in. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 40px;
   padding: 0 16px;
-  border: 2px solid var(--dark-ink);
+  border: 2.5px solid var(--ink);
   border-radius: 999px;
-  background: var(--control);
-  box-shadow: 3px 3px 0 var(--dark-ink);
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
   font-size: 14px;
   font-weight: 750;
   white-space: nowrap;
@@ -288,12 +279,12 @@ input {
 
 .button:hover:not(:disabled) {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--dark-ink);
+  box-shadow: 4px 4px 0 var(--ink);
 }
 
 .button:active:not(:disabled) {
   transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--dark-ink);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 
 .button:disabled {
@@ -301,23 +292,23 @@ input {
   cursor: default;
 }
 
-.button.primary {
-  background: var(--rainbow);
-  background-size: 300% 100%;
-  color: var(--dark-ink);
-  box-shadow:
-    3px 3px 0 var(--dark-ink),
-    0 0 26px rgba(255, 60, 172, 0.6);
-  animation: flow 8s linear infinite;
+.topbar label.button {
+  background: var(--blue);
+  color: var(--paper);
 }
 
-.button.primary:disabled {
-  animation: none;
+.button.album {
+  background: var(--green);
+  color: var(--ink);
+}
+
+.button.primary {
+  background: var(--red);
+  color: var(--paper);
 }
 
 .button.danger {
-  background: var(--night);
-  color: var(--danger);
+  color: var(--red);
 }
 
 .button.quiet {
@@ -331,10 +322,10 @@ input {
   padding: 2px 0;
   border: 0;
   background: none;
-  color: var(--acid);
+  color: var(--blue);
   font-size: inherit;
   font-weight: 750;
-  text-decoration: underline wavy;
+  text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
@@ -352,11 +343,11 @@ input {
   width: 34px;
   height: 34px;
   flex: none;
-  border: 2px solid var(--dark-ink);
+  border: 2.5px solid var(--ink);
   border-radius: 999px;
-  background: var(--magenta);
-  color: var(--dark-ink);
-  box-shadow: 2px 2px 0 var(--dark-ink);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
   cursor: pointer;
 }
 
@@ -366,21 +357,21 @@ input {
   height: 16px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* The desk: the sheets on the left, the tools on the right. */
+/* The desk: the sheets on the left, the tools on the right, inside the yellow border. */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 350px;
   gap: 28px;
   align-items: start;
   padding-block: 30px 48px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(calc(var(--border) + 16px), env(safe-area-inset-left, 0px));
+  padding-right: max(calc(var(--border) + 16px), env(safe-area-inset-right, 0px));
+  padding-bottom: calc(48px + var(--border) + env(safe-area-inset-bottom, 0px));
 }
 
 .stage {
@@ -397,17 +388,17 @@ input {
 }
 
 .stage.file-over {
-  outline-color: var(--acid);
+  outline-color: var(--paper);
 }
 
-/* Chips over the swirl: solid night pills with a yellow rim. */
+/* Labels over the scene: white tags with a black outline. */
 .summary,
 .page figcaption,
 .empty-hint,
 .print-note {
-  border: 2px solid var(--yellow);
-  background: var(--night);
-  box-shadow: 3px 3px 0 var(--magenta);
+  border: 2.5px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .summary {
@@ -419,21 +410,22 @@ input {
   margin: 0;
   padding: 6px 8px 6px 16px;
   border-radius: 999px;
-  color: var(--muted);
+  color: var(--ink);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
 .zoom-switch {
   display: inline-flex;
   padding: 2px;
+  border: 2px solid var(--ink);
   border-radius: 999px;
-  background: var(--control);
+  background: var(--soft);
 }
 
 .zoom-switch button {
-  padding: 3px 10px;
+  padding: 2px 10px;
   border: 0;
   border-radius: 999px;
   background: none;
@@ -444,7 +436,6 @@ input {
 
 .zoom-switch button[aria-pressed='true'] {
   background: var(--yellow);
-  color: var(--dark-ink);
 }
 
 .empty-hint,
@@ -452,8 +443,8 @@ input {
   max-width: 62ch;
   margin: 0;
   padding: 10px 18px;
-  border-radius: 18px;
-  color: var(--muted);
+  border-radius: var(--radius);
+  color: var(--ink);
   font-size: 13px;
   line-height: 1.5;
   text-align: center;
@@ -461,8 +452,8 @@ input {
 }
 
 .empty-hint {
-  color: var(--ink);
   font-size: 14px;
+  font-weight: 600;
 }
 
 .pages {
@@ -476,7 +467,7 @@ input {
 .page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   margin: 0;
   align-items: center;
@@ -487,17 +478,19 @@ input {
   align-items: center;
   justify-content: space-between;
   width: min(100%, 720px);
-  padding: 6px 16px;
+  padding: 5px 16px;
   border-radius: 999px;
-  color: var(--ink);
+  color: var(--maroon);
   font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 400;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 700;
 }
 
 .page figcaption .link-button {
   font-family: var(--font-ui);
   font-size: 13px;
+  font-style: normal;
 }
 
 .page-scroll {
@@ -505,41 +498,23 @@ input {
   justify-content: center;
   width: 100%;
   overflow-x: auto;
-  padding: 26px 26px 34px;
+  padding: 4px 14px 18px 4px;
 }
 
-/* The paper: always plain white, at the paper's own proportions, inside a colour-cycling halo. */
+/* The paper: plain white, at the paper's own proportions, outlined like a sheet on the table. */
 .sheet-frame {
   position: relative;
-  isolation: isolate;
   flex: none;
   width: min(100%, 720px);
-}
-
-.halo {
-  position: absolute;
-  inset: -16px;
-  z-index: -1;
-  border-radius: 10px;
-  background: conic-gradient(
-    var(--magenta),
-    var(--orange),
-    var(--yellow),
-    var(--acid),
-    var(--cyan),
-    var(--violet),
-    var(--magenta)
-  );
-  filter: blur(16px);
-  pointer-events: none;
-  animation: cycle 6s linear infinite;
 }
 
 .sheet {
   position: relative;
   width: 100%;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px var(--dark-ink);
+  background: var(--paper);
+  box-shadow:
+    0 0 0 3px var(--ink),
+    10px 10px 0 3px var(--ink);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -578,26 +553,21 @@ input {
   pointer-events: none;
 }
 
-/* The chosen photo wears a turning rainbow frame. */
+/* The chosen photo: a yellow frame inside black lines. */
 .tile.selected::after,
 .tile:focus-visible::after {
-  border: 4px solid transparent;
-  border-image: conic-gradient(
-      from var(--spin),
-      var(--magenta),
-      var(--yellow),
-      var(--acid),
-      var(--cyan),
-      var(--violet),
-      var(--magenta)
-    )
-    1;
-  animation: spin 2s linear infinite;
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 7px var(--yellow),
+    inset 0 0 0 9px var(--ink);
 }
 
 .tile.drop-target::after {
-  border: 4px solid var(--acid);
-  background: rgba(184, 255, 60, 0.25);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    inset 0 0 0 7px var(--green),
+    inset 0 0 0 9px var(--ink);
+  background: rgba(59, 181, 74, 0.2);
 }
 
 .tile:focus-visible {
@@ -606,17 +576,17 @@ input {
 
 .grip {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 10px;
+  left: 10px;
   z-index: 4;
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
-  border: 2px solid var(--dark-ink);
+  border: 2.5px solid var(--ink);
   border-radius: 999px;
   background: var(--yellow);
-  color: var(--dark-ink);
+  color: var(--ink);
   cursor: move;
   touch-action: none;
   opacity: 0;
@@ -636,9 +606,11 @@ input {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--magenta);
+  color: var(--blue);
   font-family: var(--font-display);
-  font-size: 34px;
+  font-size: 36px;
+  font-style: italic;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -646,58 +618,62 @@ input {
   content: '';
   position: absolute;
   inset: 8%;
-  border: 2px dashed rgba(143, 77, 255, 0.4);
-  border-radius: 10px;
+  border: 2px dashed rgba(17, 17, 17, 0.28);
+  border-radius: 6px;
   transition:
     border-color 120ms ease,
     background 120ms ease;
 }
 
 .free-slot:hover::before {
-  border-color: var(--magenta);
-  background: rgba(255, 60, 172, 0.07);
+  border-color: var(--blue);
+  background: rgba(34, 64, 154, 0.05);
 }
 
-/* Tools: chunky solid panels, faint diagonal stripes, a thick rim and stacked colour shadows. */
+/* Tools: white panels with a black outline, a hard shadow and a colour header band. */
 .side {
   position: sticky;
   top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + 24px);
   display: flex;
   flex-direction: column;
-  gap: 26px;
-  max-height: calc(100vh - var(--topbar-height) - env(safe-area-inset-top, 0px) - 40px);
+  gap: 24px;
+  max-height: calc(100vh - var(--topbar-height) - env(safe-area-inset-top, 0px) - 40px - var(--border));
   overflow-y: auto;
-  padding: 0 14px 14px 0;
+  padding: 0 10px 10px 0;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 18px;
-  border: 3px solid var(--magenta);
+  padding: 0 18px 18px;
+  overflow: hidden;
+  border: 3px solid var(--ink);
   border-radius: var(--radius);
-  background-color: var(--panel);
-  background-image: repeating-linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.035) 0 12px,
-    rgba(255, 255, 255, 0) 12px 24px
-  );
-  box-shadow:
-    6px 6px 0 var(--orange),
-    12px 12px 0 var(--violet);
+  background: var(--paper);
+  box-shadow: 6px 6px 0 var(--ink);
 }
 
-.inspector {
-  border-color: var(--cyan);
-  box-shadow:
-    6px 6px 0 var(--yellow),
-    12px 12px 0 var(--magenta);
+.panel > .panel-head:first-child {
+  margin: 0 -18px;
+  padding: 10px 14px 10px 18px;
+  border-bottom: 3px solid var(--ink);
+  background: var(--blue);
+  color: var(--paper);
+}
+
+.inspector > .panel-head:first-child {
+  background: var(--red);
+}
+
+.album-dialog > .panel-head:first-child {
+  background: var(--green);
+  color: var(--ink);
 }
 
 .panel-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -710,35 +686,31 @@ input {
 .panel h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: 400;
-  color: var(--yellow);
-  text-shadow:
-    2px 2px 0 var(--magenta),
-    4px 4px 0 var(--violet);
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 .panel h2 {
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .panel h3 {
-  font-size: 19px;
-}
-
-.inspector h2 {
-  color: var(--cyan);
+  color: var(--maroon);
+  font-size: 21px;
 }
 
 .panel-head.sub {
   padding-top: 12px;
-  border-top: 2px dashed var(--line);
+  border-top: 2px dashed rgba(17, 17, 17, 0.3);
 }
 
 .photo-name {
   margin: 2px 0 0;
   overflow: hidden;
-  color: var(--muted);
+  color: inherit;
   font-size: 13px;
+  opacity: 0.85;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -756,9 +728,9 @@ input {
 }
 
 .field-label {
-  color: var(--acid);
+  color: var(--ink);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -776,9 +748,9 @@ input {
   flex-wrap: wrap;
   gap: 3px;
   padding: 3px;
-  border: 2px solid var(--line);
-  border-radius: 14px;
-  background: var(--night);
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
 }
 
 .segmented button {
@@ -786,7 +758,7 @@ input {
   min-height: 32px;
   padding: 0 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 6px;
   background: none;
   font-size: 13px;
   font-weight: 750;
@@ -795,8 +767,7 @@ input {
 
 .segmented button[aria-pressed='true'] {
   background: var(--yellow);
-  color: var(--dark-ink);
-  box-shadow: 2px 2px 0 var(--magenta);
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 .number-field {
@@ -806,29 +777,42 @@ input {
   min-width: 0;
 }
 
+.number-input,
+.text-input {
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
 .number-input {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 10px;
-  border: 2px solid var(--line);
-  border-radius: 14px;
-  background: var(--night);
 }
 
-.number-input:focus-within {
-  border-color: var(--cyan);
+.number-input:focus-within,
+.text-input:focus {
+  box-shadow: 0 0 0 3px var(--yellow);
+  outline: none;
 }
 
 .number-input input {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  min-height: 34px;
   border: 0;
   background: none;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   outline: none;
+}
+
+.text-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
 }
 
 .unit {
@@ -838,7 +822,7 @@ input {
 
 input[type='range'] {
   width: 100%;
-  accent-color: var(--magenta);
+  accent-color: var(--red);
 }
 
 .button-row {
@@ -860,6 +844,99 @@ input[type='range'] {
   flex: 0 0 auto;
 }
 
+/* The album picker. */
+.album-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  margin: auto;
+  overflow-y: auto;
+  color: var(--ink);
+}
+
+.album-dialog::backdrop {
+  background: rgba(17, 17, 17, 0.55);
+}
+
+.album-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.album-row {
+  display: flex;
+  gap: 10px;
+}
+
+.album-error {
+  margin: 0;
+  padding: 10px 14px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--yellow);
+  font-weight: 650;
+}
+
+.album-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.album-bar-buttons {
+  display: flex;
+  gap: 14px;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.album-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 2.5px solid var(--ink);
+  border-radius: 6px;
+  background: var(--soft);
+  cursor: pointer;
+}
+
+.album-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+  transition: opacity 120ms ease;
+}
+
+.album-thumb[aria-pressed='true'] img {
+  opacity: 1;
+}
+
+.album-thumb[aria-pressed='true']::after {
+  content: '✓';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--yellow);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .swap-ghost {
   position: fixed;
   top: 0;
@@ -868,11 +945,11 @@ input[type='range'] {
   width: 66px;
   height: 66px;
   margin: -33px 0 0 -33px;
-  padding: 4px;
-  border: 3px solid var(--yellow);
-  border-radius: 16px;
-  background: var(--night);
-  box-shadow: 4px 4px 0 var(--magenta);
+  padding: 3px;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  background: var(--yellow);
+  box-shadow: 4px 4px 0 var(--ink);
   pointer-events: none;
 }
 
@@ -881,29 +958,108 @@ input[type='range'] {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(24px + var(--border) + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   max-width: min(480px, calc(100vw - 32px));
   padding: 12px 18px;
-  border: 2px solid var(--dark-ink);
-  border-radius: 18px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius);
   background: var(--yellow);
-  box-shadow: 4px 4px 0 var(--magenta);
-  color: var(--dark-ink);
+  box-shadow: 4px 4px 0 var(--ink);
   font-size: 14px;
   font-weight: 650;
   line-height: 1.4;
   transform: translateX(-50%);
 }
 
+/* The loader: a spinning four-colour wheel, the count, and a marching striped bar. */
+.loader {
+  position: fixed;
+  top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + 20px);
+  left: 50%;
+  z-index: 45;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: min(300px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  padding: 10px 18px 10px 12px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: 5px 5px 0 var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+}
+
+/* Restoring from the device is often instant: show the loader only if it takes a moment. */
+.loader.restoring {
+  animation: appear 0.2s 0.4s both;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.loader-ring {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  background: conic-gradient(
+    from var(--spin),
+    var(--blue) 0 25%,
+    var(--red) 0 50%,
+    var(--yellow) 0 75%,
+    var(--green) 0 100%
+  );
+  animation: spin 1.2s linear infinite;
+}
+
+.loader-bar {
+  grid-column: 1 / -1;
+  height: 10px;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+.loader-bar span {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--blue) 0 40px,
+    var(--red) 40px 80px,
+    var(--yellow) 80px 120px,
+    var(--green) 120px 160px
+  );
+  background-size: 160px 100%;
+  animation: march 2s linear infinite;
+  transition: width 200ms ease;
+}
+
 /* Phones and narrow windows: one column, the chosen photo's tools in a sheet at the bottom. */
 @media (max-width: 860px) {
+  :root {
+    --border: 8px;
+  }
+
   .layout {
     grid-template-columns: minmax(0, 1fr);
     padding-top: 20px;
@@ -924,17 +1080,12 @@ input[type='range'] {
     max-height: 55vh;
     overflow-y: auto;
     box-shadow:
-      0 -6px 0 var(--yellow),
-      0 -12px 0 var(--magenta),
-      0 10px 40px rgba(0, 0, 0, 0.6);
+      0 -4px 0 var(--ink),
+      0 10px 40px rgba(0, 0, 0, 0.45);
   }
 
   .app.has-selection .layout {
     padding-bottom: calc(55vh + 30px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .page-scroll {
-    padding: 18px 16px 26px;
   }
 
   .tile.selected .grip {
@@ -949,7 +1100,7 @@ input[type='range'] {
 
 @media (max-width: 520px) {
   .brand h1 {
-    font-size: 27px;
+    font-size: 30px;
   }
 
   .brand-mark {
@@ -958,8 +1109,12 @@ input[type='range'] {
 
   .topbar .button {
     min-height: 34px;
-    padding: 0 12px;
+    padding: 0 11px;
     font-size: 13px;
+  }
+
+  .album-row {
+    flex-direction: column;
   }
 }
 

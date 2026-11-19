@@ -1,8 +1,11 @@
-import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
+import {Backdrop} from './Backdrop';
+import {downloadAlbumPhoto, type AlbumPhoto} from './album';
+import {AlbumDialog} from './AlbumDialog';
 import {download, exportPageImage, exportPdf, type ExportPhoto} from './exporters';
 import {DEFAULT_CROP, cleanSettings, cm, computeSheet, type Crop, type Settings} from './layout';
 import {Inspector, SettingsPanel} from './Panels';
-import {newId, openImage, type Photo} from './photos';
+import {ADD_PHOTOS_INPUT, REPLACE_PHOTO_INPUT, newId, openPickerOnKey, openPhoto, type Photo} from './photos';
 import {SheetView} from './SheetView';
 import {deleteBlob, loadPhotos, loadSettings, saveBlob, savePhotoList, saveSettings} from './storage';
 
@@ -23,10 +26,11 @@ export function App() {
   const [actualSize, setActualSize] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  /** Photos being opened and kept: how many are done out of how many were picked. */
+  const [adding, setAdding] = useState<{done: number; total: number} | null>(null);
   const [swap, setSwap] = useState<SwapDrag | null>(null);
   const [fileOver, setFileOver] = useState(false);
-  const addInput = useRef<HTMLInputElement>(null);
-  const replaceInput = useRef<HTMLInputElement>(null);
+  const [albumOpen, setAlbumOpen] = useState(false);
   const replaceTarget = useRef<string | null>(null);
 
   const sheet = useMemo(
@@ -57,7 +61,7 @@ export function App() {
       const opened: Photo[] = [];
       for (const stored of kept) {
         try {
-          opened.push({...stored, ...(await openImage(stored.blob))});
+          opened.push({...stored, ...(await openPhoto(stored.blob))});
         } catch {
           // A file this browser can no longer read is left out.
         }
@@ -85,47 +89,86 @@ export function App() {
     return () => clearTimeout(timer);
   }, [photos, loaded]);
 
-  const addFiles = useCallback(
-    async (files: File[]) => {
-      const added: Photo[] = [];
+  // Counts photos in and out of the loader, so two batches added at once add up.
+  const startAdding = useCallback(
+    (count: number) => setAdding(current => ({done: current?.done ?? 0, total: (current?.total ?? 0) + count})),
+    [],
+  );
+  const finishOne = useCallback(
+    () =>
+      setAdding(current => {
+        if (!current) return null;
+        const done = current.done + 1;
+
+        return done >= current.total ? null : {...current, done};
+      }),
+    [],
+  );
+
+  /**
+   * Adds photos from files or from an album, one at a time: each lands on the sheet as soon as it is open, while the
+   * loader counts the rest. What could not be read is listed in one message.
+   */
+  const addSources = useCallback(
+    async (sources: {name: string; load: () => Promise<Blob>}[], failure: (names: string[]) => string) => {
+      if (!sources.length) return;
+      startAdding(sources.length);
       const unreadable: string[] = [];
-      for (const file of files) {
+      for (const source of sources) {
         try {
-          const opened = await openImage(file);
+          const opened = await openPhoto(await source.load());
           const id = newId();
-          await saveBlob(id, file);
-          added.push({id, name: file.name, blob: file, ...opened, spanX: 1, spanY: 1, crop: DEFAULT_CROP});
+          await saveBlob(id, opened.blob);
+          const photo: Photo = {id, name: source.name, ...opened, spanX: 1, spanY: 1, crop: DEFAULT_CROP};
+          setPhotos(current => [...current, photo]);
         } catch {
-          unreadable.push(file.name);
+          unreadable.push(source.name);
+        } finally {
+          finishOne();
         }
       }
-      if (added.length) setPhotos(current => [...current, ...added]);
-      if (unreadable.length)
-        say(
-          `Couldn't open ${unreadable.length > 1 ? `${unreadable.length} files` : unreadable[0]}. Save as JPEG or PNG and try again.`,
-        );
+      if (unreadable.length) say(failure(unreadable));
     },
-    [say],
+    [say, startAdding, finishOne],
   );
+
+  const addFiles = useCallback(
+    (files: File[]) =>
+      addSources(
+        files.map(file => ({name: file.name, load: async () => file})),
+        names =>
+          `Couldn't open ${names.length > 1 ? `${names.length} files` : names[0]}. Save as JPEG or PNG and try again.`,
+      ),
+    [addSources],
+  );
+
+  const addAlbumPhotos = (albumPhotos: AlbumPhoto[]) =>
+    addSources(
+      albumPhotos.map((photo, index) => ({name: `Album photo ${index + 1}`, load: () => downloadAlbumPhoto(photo)})),
+      names => `Couldn't get ${names.length} ${1 === names.length ? 'photo' : 'photos'} from the album. Try again.`,
+    );
 
   const replacePhoto = useCallback(
     async (id: string, file: File) => {
+      startAdding(1);
       try {
-        const opened = await openImage(file);
-        await saveBlob(id, file);
+        const opened = await openPhoto(file);
+        await saveBlob(id, opened.blob);
         setPhotos(current =>
           current.map(photo => {
             if (photo.id !== id) return photo;
             URL.revokeObjectURL(photo.url);
 
-            return {...photo, ...opened, name: file.name, blob: file, crop: DEFAULT_CROP};
+            return {...photo, ...opened, name: file.name, crop: DEFAULT_CROP};
           }),
         );
       } catch {
         say(`Couldn't open ${file.name}. Save it as JPEG or PNG and try again.`);
+      } finally {
+        finishOne();
       }
     },
-    [say],
+    [say, startAdding, finishOne],
   );
 
   const updatePhoto = useCallback((id: string, changes: Partial<Photo>) => {
@@ -216,9 +259,7 @@ export function App() {
   };
 
   const exportPhotos = (): Map<string, ExportPhoto> =>
-    new Map(
-      photos.map(photo => [photo.id, {image: photo.image, width: photo.width, height: photo.height, crop: photo.crop}]),
-    );
+    new Map(photos.map(photo => [photo.id, {blob: photo.blob, preview: photo.preview, crop: photo.crop}]));
 
   const onExportPdf = async () => {
     if (!sheet || !photos.length || busy) return;
@@ -268,22 +309,26 @@ export function App() {
 
   return (
     <div className={['app', selected && 'has-selection'].filter(Boolean).join(' ')}>
+      <Backdrop />
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
             🖼️
           </span>
-          <h1 aria-label="Blotted">
-            {[...'Blotted'].map((letter, index) => (
-              <span key={index} aria-hidden="true" style={{'--letter': index} as CSSProperties}>
-                {letter}
-              </span>
-            ))}
-          </h1>
+          <h1>Blotted</h1>
         </div>
         <div className="actions">
-          <button type="button" className="button" onClick={() => addInput.current?.click()}>
-            Add photos
+          <label
+            className="button"
+            htmlFor={ADD_PHOTOS_INPUT}
+            role="button"
+            tabIndex={0}
+            onKeyDown={openPickerOnKey(ADD_PHOTOS_INPUT)}
+          >
+            {adding ? 'Adding…' : 'Add photos'}
+          </label>
+          <button type="button" className="button album" onClick={() => setAlbumOpen(true)}>
+            Album link
           </button>
           <button
             type="button"
@@ -295,21 +340,25 @@ export function App() {
           </button>
         </div>
         <input
-          ref={addInput}
+          id={ADD_PHOTOS_INPUT}
+          className="file-input"
           type="file"
           accept="image/*"
           multiple
-          hidden
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={event => {
             addFiles([...(event.target.files ?? [])]);
             event.target.value = '';
           }}
         />
         <input
-          ref={replaceInput}
+          id={REPLACE_PHOTO_INPUT}
+          className="file-input"
           type="file"
           accept="image/*"
-          hidden
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={event => {
             const file = event.target.files?.[0];
             if (file && replaceTarget.current) replacePhoto(replaceTarget.current, file);
@@ -359,7 +408,9 @@ export function App() {
                 </span>
               </p>
               {loaded && !photos.length ? (
-                <p className="empty-hint">Drop photos on the page, or press + to add them. They stay on this device.</p>
+                <p className="empty-hint">
+                  Drop photos on the page, press + or Album link to add them. They stay on this device.
+                </p>
               ) : null}
               <div className="pages">
                 {Array.from({length: sheet.pageCount}, (_, page) => (
@@ -390,7 +441,6 @@ export function App() {
                         onSelect={setSelectedId}
                         onCrop={setCrop}
                         onStartSwap={startSwap}
-                        onAddPhotos={() => addInput.current?.click()}
                         onReplaceWithFile={replacePhoto}
                       />
                     </div>
@@ -421,7 +471,6 @@ export function App() {
               onChange={changes => updatePhoto(selected.id, changes)}
               onReplace={() => {
                 replaceTarget.current = selected.id;
-                replaceInput.current?.click();
               }}
               onMove={offset => movePhoto(selected.id, offset)}
               onRemove={() => removePhoto(selected.id)}
@@ -441,6 +490,22 @@ export function App() {
       {swap && swapPhoto ? (
         <div className="swap-ghost" style={{transform: `translate(${swap.x}px, ${swap.y}px)`}} aria-hidden="true">
           <img src={swapPhoto.url} alt="" />
+        </div>
+      ) : null}
+      <AlbumDialog open={albumOpen} onClose={() => setAlbumOpen(false)} onAdd={addAlbumPhotos} />
+      {adding || !loaded ? (
+        <div className={['loader', !loaded && !adding && 'restoring'].filter(Boolean).join(' ')} role="status">
+          <span className="loader-ring" aria-hidden="true" />
+          <span className="loader-text">
+            {adding
+              ? `Adding ${adding.total > 1 ? `photos ${Math.min(adding.done + 1, adding.total)} of ${adding.total}` : 'photo'}…`
+              : 'Loading your photos…'}
+          </span>
+          {adding && adding.total > 1 ? (
+            <span className="loader-bar" aria-hidden="true">
+              <span style={{width: `${(adding.done / adding.total) * 100}%`}} />
+            </span>
+          ) : null}
         </div>
       ) : null}
       {toast ? (

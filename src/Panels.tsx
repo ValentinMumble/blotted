@@ -11,7 +11,7 @@ import {
   type Sheet,
   type Sizing,
 } from './layout';
-import {SPANS, type Photo} from './photos';
+import {REPLACE_PHOTO_INPUT, SPANS, openPickerOnKey, type Photo} from './photos';
 
 /** The usual blotter tab: a quarter inch, 30 by 30 on a 7.5 inch sheet. */
 const BLOTTER_SQUARE_MM = 6.35;
@@ -175,9 +175,19 @@ export function Inspector({
       </div>
 
       <div className="button-row">
-        <button type="button" className="button" onClick={onReplace}>
+        <label
+          className="button"
+          htmlFor={REPLACE_PHOTO_INPUT}
+          role="button"
+          tabIndex={0}
+          onClick={onReplace}
+          onKeyDown={event => {
+            onReplace();
+            openPickerOnKey(REPLACE_PHOTO_INPUT)(event);
+          }}
+        >
           Replace photo
-        </button>
+        </label>
         <button type="button" className="button" onClick={() => onChange({crop: DEFAULT_CROP})}>
           Reset crop
         </button>

@@ -11,11 +11,13 @@ import {
   type Settings,
   type Sheet,
 } from './layout';
+import {withImage} from './photos';
 
 export interface ExportPhoto {
-  image: CanvasImageSource;
-  width: number;
-  height: number;
+  /** The original, opened only while it is drawn. */
+  blob: Blob;
+  /** The screen copy, drawn instead if this device cannot open the original. */
+  preview: Blob;
   crop: Crop;
 }
 
@@ -41,10 +43,15 @@ const drawPhoto = (
   y: number,
   width: number,
   height: number,
-) => {
-  const source = sourceRect(photo.width, photo.height, width / height, photo.crop);
-  context.imageSmoothingQuality = 'high';
-  context.drawImage(photo.image, source.x, source.y, source.width, source.height, x, y, width, height);
+): Promise<void> => {
+  const draw = (image: CanvasImageSource, imageWidth: number, imageHeight: number) => {
+    const source = sourceRect(imageWidth, imageHeight, width / height, photo.crop);
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, source.x, source.y, source.width, source.height, x, y, width, height);
+  };
+
+  // A phone short of memory may not open a very big original: the export then uses the screen copy, never fails.
+  return withImage(photo.blob, draw).catch(() => withImage(photo.preview, draw));
 };
 
 const canvasOf = (width: number, height: number) => {
@@ -59,7 +66,7 @@ const placementsOn = (sheet: Sheet, page: number): Placement[] =>
   sheet.placements.filter(placement => page === placement.page);
 
 /** A JPEG of one page at 300 dpi, the paper's exact size. */
-export const exportPageImage = (
+export const exportPageImage = async (
   sheet: Sheet,
   page: number,
   photos: Map<string, ExportPhoto>,
@@ -72,7 +79,7 @@ export const exportPageImage = (
   for (const placement of onPage) {
     const photo = photos.get(placement.id);
     if (!photo) continue;
-    drawPhoto(
+    await drawPhoto(
       context,
       photo,
       placement.x * PX_PER_MM,
@@ -103,8 +110,9 @@ export const exportPdf = async (sheet: Sheet, photos: Map<string, ExportPhoto>, 
       const photo = photos.get(placement.id);
       if (!photo) continue;
       const [canvas, context] = canvasOf(placement.width * PX_PER_MM, placement.height * PX_PER_MM);
-      drawPhoto(context, photo, 0, 0, canvas.width, canvas.height);
+      await drawPhoto(context, photo, 0, 0, canvas.width, canvas.height);
       const jpeg = canvas.toDataURL('image/jpeg', 0.92);
+      canvas.width = canvas.height = 0;
       pdf.addImage(jpeg, 'JPEG', placement.x, placement.y, placement.width, placement.height);
     }
     pdf.setFillColor(DOT_COLOUR);

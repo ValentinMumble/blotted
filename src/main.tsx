@@ -2,7 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {App} from './App';
 // The display font comes with the app, not from Google: no other server holds up the first screen.
-import '@fontsource/shrikhand/400.css';
+import '@fontsource/tinos/700-italic.css';
 import './styles.css';
 
 // A page opened before a deploy asks for files the new deploy no longer has: reload to get the new ones, rather than
