@@ -315,7 +315,9 @@ export function App() {
           <span className="brand-mark" aria-hidden="true">
             🖼️
           </span>
-          <h1>Blotted</h1>
+          <h1>
+            Blotted <small>since 1943</small>
+          </h1>
         </div>
         <div className="actions">
           <label

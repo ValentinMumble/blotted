@@ -1,5 +1,11 @@
 import {describe, expect, test} from 'vitest';
-import {albumLink, parseAlbum} from './album';
+import {albumLink, parseAlbum, photoAddress} from './album';
+
+test('photoAddress takes album photos only', () => {
+  expect(photoAddress('https://lh3.googleusercontent.com/pw/AP1Gcz').pathname).toBe('/pw/AP1Gcz');
+  expect(() => photoAddress('https://lh3.googleusercontent.com/a/avatar')).toThrow(/not a Google Photos album photo/);
+  expect(() => photoAddress('https://example.com/pw/x')).toThrow();
+});
 
 describe('albumLink', () => {
   test('takes Google Photos links', () => {

@@ -58,12 +58,71 @@ export function parseAlbum(html: string): Album {
   return {title: title ? decodeHtml(title) : null, photos};
 }
 
+/** A photo address from an album, checked: only Google's photo server is fetched. */
+export function photoAddress(input: string): URL {
+  let address: URL;
+  try {
+    address = new URL(input);
+  } catch {
+    throw new HttpError(400, 'Give a photo address from the album');
+  }
+  if (
+    'https:' !== address.protocol ||
+    'lh3.googleusercontent.com' !== address.hostname ||
+    !address.pathname.startsWith('/pw/')
+  )
+    throw new HttpError(400, 'That is not a Google Photos album photo');
+
+  return address;
+}
+
+/** One album photo at the given size, streamed through as it comes, so its size is not limited. */
+export async function streamPhoto(address: URL, width: number, height: number): Promise<Response> {
+  const size = (value: number) => (Number.isInteger(value) && value > 0 && value <= 20000 ? value : null);
+  const [photoWidth, photoHeight] = [size(width), size(height)];
+  if (!photoWidth || !photoHeight) throw new HttpError(400, 'Give the photo size as w and h');
+  let photo: Response;
+  try {
+    photo = await fetch(`${address.href}=w${photoWidth}-h${photoHeight}`, {headers: {'User-Agent': BROWSER}});
+  } catch {
+    throw new HttpError(502, "Couldn't reach Google Photos, try again");
+  }
+  if (429 === photo.status) throw new HttpError(429, 'Google Photos asks to slow down, try again in a moment');
+  if (!photo.ok || !photo.body) throw new HttpError(502, `Google Photos answered ${photo.status}`);
+
+  return new Response(photo.body, {
+    headers: {
+      'Content-Type': photo.headers.get('content-type') ?? 'image/jpeg',
+      'Cache-Control': 'private, max-age=86400',
+    },
+  });
+}
+
+/**
+ * The album page a short link (photos.app.goo.gl) points to. Asked as a browser, Google answers a short link with a
+ * page that forwards to the album by script; asked plainly, it redirects. So the redirect is read here, by hand.
+ */
+async function albumPage(link: URL): Promise<URL> {
+  if ('photos.google.com' === link.hostname) return link;
+  const answer = await fetch(link, {redirect: 'manual'});
+  const target = answer.headers.get('location');
+  if (!target) throw new HttpError(404, 'No album at that link. Is it shared with a link?');
+  const page = new URL(target, link);
+  if ('photos.google.com' !== page.hostname) throw new HttpError(400, 'That link does not lead to an album');
+
+  return page;
+}
+
 /** Fetches the album page behind a shared link and lists its photos. */
 export async function readAlbum(link: URL): Promise<Album> {
   let page: Response;
   try {
-    page = await fetch(link, {redirect: 'follow', headers: {'User-Agent': BROWSER, 'Accept-Language': 'en'}});
-  } catch {
+    page = await fetch(await albumPage(link), {
+      redirect: 'follow',
+      headers: {'User-Agent': BROWSER, 'Accept-Language': 'en'},
+    });
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
     throw new HttpError(502, "Couldn't reach Google Photos, try again");
   }
   if (!ALBUM_HOSTS.has(new URL(page.url).hostname)) throw new HttpError(400, 'That link does not lead to an album');

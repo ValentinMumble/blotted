@@ -6,8 +6,8 @@ https://blotted.vumble.dev
 - **Add photos**: the button, drag and drop, or paste. On iOS the button opens the photo library. A loader counts
   the photos in. Photos are kept at full size for the exports; the screen shows light copies, so any phone copes.
 - **Album link**: paste a Google Photos album shared by link, tick the photos, add them at full size. The server
-  reads the album's public page (`api/album.ts`, Google has no API for shared albums); the photos download
-  straight from Google into the browser.
+  reads the album's public page (`api/album.ts`, Google has no API for shared albums) and passes the photos
+  through, as Google serves them without CORS headers.
 - **Arrange**: drag a photo to choose what shows, pinch (or Ctrl and the wheel) to zoom, drag its ⇅ handle onto
   another photo to swap them. Each photo can be Normal, Wide, Tall or Big.
 - **Sheet**: A4 or Letter, square size (0.8 cm by default; the usual blotter is ¼ in), photo shape (3:4, 1:1, 4:3),

@@ -53,17 +53,42 @@ export const readAlbum = async (link: string): Promise<Album> => {
 /** A square thumbnail of the photo, for picking. */
 export const thumbnailOf = (photo: AlbumPhoto, size = 300): string => `${photo.url}=w${size}-h${size}-c`;
 
-/** Downloads the photo at its full size. */
-export const downloadAlbumPhoto = async (photo: AlbumPhoto): Promise<Blob> => {
-  let response: Response;
-  try {
-    response = await fetch(`${photo.url}=w${photo.width}-h${photo.height}`);
-  } catch {
-    throw new Error('No connection to Google Photos');
-  }
-  if (!response.ok) throw new Error(`Google Photos answered ${response.status}`);
-  const blob = await response.blob();
-  if (!blob.type.startsWith('image/')) throw new Error('Not a photo');
+const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-  return blob;
+/** The photo at this size, through Blotted's server: Google serves album photos without CORS headers. */
+const fetchPhoto = async (photo: AlbumPhoto, width: number, height: number): Promise<Response> => {
+  try {
+    return await fetch(
+      `/api/album?photo=${encodeURIComponent(photo.url)}&w=${Math.round(width)}&h=${Math.round(height)}`,
+    );
+  } catch {
+    throw new Error('No connection to Blotted');
+  }
+};
+
+/** A smaller fallback size, if the full one cannot come through: at most this many pixels on the long side. */
+const FALLBACK_EDGE = 2400;
+
+/**
+ * Downloads the photo at its full size. When Google asks to slow down, it waits and tries again; if the full size
+ * still fails, it takes the photo at 2400 px on the long side rather than none.
+ */
+export const downloadAlbumPhoto = async (photo: AlbumPhoto): Promise<Blob> => {
+  const scale = Math.min(1, FALLBACK_EDGE / Math.max(photo.width, photo.height));
+  const attempts: [number, number, number][] = [
+    [photo.width, photo.height, 0],
+    [photo.width, photo.height, 1500],
+    [photo.width * scale, photo.height * scale, 3000],
+  ];
+  let lastStatus = 0;
+  for (const [width, height, delay] of attempts) {
+    if (delay) await wait(delay);
+    const response = await fetchPhoto(photo, width, height);
+    if (response.ok) {
+      const blob = await response.blob();
+      if (blob.type.startsWith('image/')) return blob;
+    }
+    lastStatus = response.status;
+  }
+  throw new Error(`Google Photos answered ${lastStatus}`);
 };

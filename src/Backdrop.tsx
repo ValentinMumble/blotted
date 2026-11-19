@@ -14,6 +14,10 @@ const star = (centerX: number, centerY: number, radius: number) =>
 
 const RAYS = 14;
 
+/** The moon: the outer arc, then the inner edge as a smooth profile (chin, lips, nose, brow, forehead). */
+const MOON =
+  'M120 14 A 88 88 0 1 0 120 186 C 116.7 184.8 104.7 182.3 100 179 C 95.3 175.7 93.7 170.7 92 166 C 90.3 161.3 91.5 154.8 90 151 C 88.5 147.2 83.5 145.3 83 143 C 82.5 140.7 87 139 87 137 C 87 135 83 132.8 83 131 C 83 129.2 86.8 128 87 126 C 87.2 124 82.2 121.7 84 119 C 85.8 116.3 97.8 113.3 98 110 C 98.2 106.7 87.8 102.7 85 99 C 82.2 95.3 81 91.8 81 88 C 81 84.2 84.7 80.7 85 76 C 85.3 71.3 81.8 66.7 83 60 C 84.2 53.3 85.8 43.7 92 36 C 98.2 28.3 115.3 17.7 120 14 Z';
+
 export function Backdrop() {
   return (
     <div className="backdrop" aria-hidden="true">
@@ -34,11 +38,21 @@ export function Backdrop() {
         />
       </svg>
 
-      <svg className="moon" viewBox="0 0 220 200">
-        <path className="moon-body" d="M112 18 A 82 82 0 1 0 112 182 A 100 100 0 0 1 112 18 Z" />
-        <path className="face" d="M46 84 q 7 -5 14 0 M50 122 q 8 8 16 2 M58 98 q 6 6 0 12" />
-        <polygon className="star-light" points={star(160, 58, 34)} />
-        <polygon className="star-light" points={star(186, 150, 18)} />
+      <svg className="moon" viewBox="-10 -10 240 220">
+        <defs>
+          <filter id="moon-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3.5" />
+          </filter>
+        </defs>
+        {/* A fat crescent with sharp tips; its inner edge is a sleeping face in profile, with a soft dark rim. */}
+        <path className="moon-glow" d={MOON} filter="url(#moon-glow)" />
+        <path className="moon-body" d={MOON} />
+        <path
+          className="face"
+          d="M57 77 Q 67 71 77 75 M58 89 Q 68 82 78 88 M62 91 l -2 4 M68 92 l 0 4.5 M74 91 l 2 4 M88 114 q -6 1 -7 -4 M84 131 q -8 3 -13 -2 M66 104 q 7 8 3 17 M86 147 q -5 3 -10 0"
+        />
+        <polygon className="star-light" points={star(162, 56, 34)} />
+        <polygon className="star-light" points={star(190, 150, 18)} />
       </svg>
 
       <svg className="sun" viewBox="-120 -120 240 240">
