@@ -8,8 +8,8 @@ import {
   coverBox,
   dotPositions,
   dotStep,
+  drawPlan,
   panCrop,
-  sourceRect,
   type Settings,
 } from './layout';
 
@@ -17,18 +17,17 @@ const items = (count: number) => Array.from({length: count}, (_, index) => ({id:
 const FIXED: Settings = {...DEFAULT_SETTINGS, sizing: 'fixed'};
 
 describe('fixed size', () => {
-  test('fits 4 by 4 photos of 6 by 8 squares of 0.8 cm on A4, centred', () => {
+  test('fits 4 by 4 photos of 6 by 8 squares of 0.8 cm on A4, centred on the grid', () => {
     const sheet = computeSheet(FIXED, items(3))!;
     expect([sheet.columns, sheet.rows, sheet.slotWidth, sheet.slotHeight]).toEqual([4, 4, 48, 64]);
-    expect(sheet.originX).toBeCloseTo(9);
-    // 35 squares fit down: the 32 the photos use start one square below the full grid's top.
-    expect(sheet.originY).toBeCloseTo(16.5);
     expect([sheet.across, sheet.down, sheet.gridY]).toEqual([24, 35, 8.5]);
-    expect(sheet.placements.map(placement => [placement.column, placement.row])).toEqual([
-      [0, 0],
-      [1, 0],
-      [2, 0],
+    // 35 squares fit down: the 32 the photos use start one square below the grid's top.
+    expect(sheet.placements.map(placement => [placement.squareX, placement.squareY])).toEqual([
+      [0, 1],
+      [6, 1],
+      [12, 1],
     ]);
+    expect([sheet.placements[0].x, sheet.placements[0].y]).toEqual([9, 16.5]);
     expect(sheet.freeSlots).toHaveLength(13);
   });
 
@@ -39,7 +38,7 @@ describe('fixed size', () => {
     expect(sheet.pageCount).toBe(1);
     expect(sheet.freeSlots).toHaveLength(0);
     const big = sheet.placements.find(placement => 'p5' === placement.id)!;
-    expect([big.column, big.row, big.width, big.height]).toEqual([1, 1, 96, 128]);
+    expect([big.squareX, big.squareY, big.width, big.height]).toEqual([6, 9, 96, 128]);
   });
 
   test('starts a new page when the first is full', () => {
@@ -50,6 +49,23 @@ describe('fixed size', () => {
 
   test('says when no photo fits the paper', () => {
     expect(computeSheet({...FIXED, square: 30, slotWidth: 10}, items(1))).toBeNull();
+  });
+});
+
+describe('a photo with its own size', () => {
+  test('takes exactly its squares, and the others flow around it', () => {
+    const list = [{id: 'wide', spanX: 1, spanY: 1, size: {across: 10, down: 5}}, ...items(3)];
+    const sheet = computeSheet(FIXED, list)!;
+    const [wide, ...others] = sheet.placements;
+    expect([wide.across, wide.down, wide.width, wide.height]).toEqual([10, 5, 80, 40]);
+    // The next 6 by 8 photos start right of it on the same row of squares; the third fills the space under it.
+    expect(others.map(placement => placement.squareX - wide.squareX)).toEqual([10, 16, 0]);
+    expect(others[2].squareY - wide.squareY).toBe(5);
+  });
+
+  test('is kept inside the grid', () => {
+    const sheet = computeSheet(FIXED, [{id: 'huge', spanX: 1, spanY: 1, size: {across: 99, down: 99}}])!;
+    expect([sheet.placements[0].across, sheet.placements[0].down]).toEqual([24, 35]);
   });
 });
 
@@ -84,17 +100,27 @@ describe('crop', () => {
     expect(box.top).toBeCloseTo(0);
   });
 
-  test('the shown part keeps the frame shape and stays inside the photo', () => {
-    const rect = sourceRect(2000, 1500, 3 / 4, {zoom: 2, focusX: 1, focusY: 0});
-    expect(rect.width / rect.height).toBeCloseTo(3 / 4);
-    expect(rect.x + rect.width).toBeCloseTo(2000);
-    expect(rect.y).toBeCloseTo(0);
+  test('zoomed in, the shown part keeps the frame shape, stays inside the photo and fills the frame', () => {
+    const plan = drawPlan(2000, 1500, 3 / 4, {zoom: 2, focusX: 1, focusY: 0});
+    expect(plan.source.width / plan.source.height).toBeCloseTo(3 / 4);
+    expect(plan.source.x + plan.source.width).toBeCloseTo(2000);
+    expect(plan.source.y).toBeCloseTo(0);
+    expect(plan.target).toEqual({x: 0, y: 0, width: 1, height: 1});
   });
 
-  test('dragging right shows more of the left side, and stops at the edge', () => {
+  test('zoomed out, the whole photo shows, smaller than the frame, centred', () => {
+    const plan = drawPlan(1500, 2000, 3 / 4, {zoom: 0.5, focusX: 0.5, focusY: 0.5});
+    expect(plan.source).toEqual({x: 0, y: 0, width: 1500, height: 2000});
+    expect(plan.target.width).toBeCloseTo(0.5);
+    expect(plan.target.x).toBeCloseTo(0.25);
+  });
+
+  test('dragging moves the photo with the finger, and stops at the edge', () => {
     expect(panCrop(DEFAULT_CROP, 0.1, 0, 4 / 3, 3 / 4).focusX).toBeLessThan(0.5);
     expect(panCrop(DEFAULT_CROP, 5, 0, 4 / 3, 3 / 4).focusX).toBe(0);
     expect(panCrop(DEFAULT_CROP, 0, 0.3, 4 / 3, 3 / 4).focusY).toBe(0.5);
+    // Zoomed out, dragging right moves the smaller photo right inside its frame.
+    expect(panCrop({zoom: 0.5, focusX: 0.5, focusY: 0.5}, 0.1, 0, 3 / 4, 3 / 4).focusX).toBeGreaterThan(0.5);
   });
 });
 
@@ -111,7 +137,7 @@ describe('dots', () => {
     expect(dots).toHaveLength(25 * 141 + 36 * 97 - 25 * 36);
     expect(new Set(dots.map(dot => dot.join())).size).toBe(dots.length);
     expect(dots).toContainEqual([sheet.gridX + 24 * 8, sheet.gridY + 35 * 8]);
-    expect(dots).toContainEqual([sheet.originX + 48, sheet.originY + 64]);
+    expect(dots).toContainEqual([sheet.placements[0].x + 48, sheet.placements[0].y + 64]);
   });
 
   test('a spacing that does not divide the square is rounded to one that does', () => {

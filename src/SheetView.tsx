@@ -2,6 +2,7 @@ import {useEffect, useRef, type CSSProperties, type KeyboardEvent, type PointerE
 import {drawDots} from './exporters';
 import {
   MAX_ZOOM,
+  MIN_ZOOM,
   clamp,
   coverBox,
   dotPositions,
@@ -11,6 +12,7 @@ import {
   type Placement,
   type Settings,
   type Sheet,
+  type SquareSize,
 } from './layout';
 import {ADD_PHOTOS_INPUT, openPickerOnKey, type Photo} from './photos';
 
@@ -26,6 +28,7 @@ interface SheetViewProps {
   onCrop: (id: string, crop: Crop) => void;
   onStartSwap: (id: string, event: PointerEvent) => void;
   onReplaceWithFile: (id: string, file: File) => void;
+  onResize: (id: string, size: SquareSize) => void;
 }
 
 /** Where a rectangle in millimetres sits on the page, as percentages, so the page can be any size on screen. */
@@ -45,7 +48,7 @@ export function SheetView(props: SheetViewProps) {
     <div className="sheet-frame" style={{width: actualSize ? `${sheet.width}mm` : undefined}}>
       <div className="sheet" style={{aspectRatio: `${sheet.width} / ${sheet.height}`}}>
         {freeSlots.map(slot => (
-          <FreeSlotButton key={`${slot.column}-${slot.row}`} sheet={sheet} slot={slot} />
+          <FreeSlotButton key={`${slot.squareX}-${slot.squareY}`} sheet={sheet} slot={slot} />
         ))}
         {placements.map(placement => {
           const photo = photos.get(placement.id);
@@ -62,6 +65,7 @@ export function SheetView(props: SheetViewProps) {
               onCrop={props.onCrop}
               onStartSwap={props.onStartSwap}
               onReplaceWithFile={props.onReplaceWithFile}
+              onResize={props.onResize}
             />
           ) : null;
         })}
@@ -98,6 +102,7 @@ interface TileProps {
   onCrop: (id: string, crop: Crop) => void;
   onStartSwap: (id: string, event: PointerEvent) => void;
   onReplaceWithFile: (id: string, file: File) => void;
+  onResize: (id: string, size: SquareSize) => void;
 }
 
 const KEY_STEP = 0.04;
@@ -112,6 +117,7 @@ function Tile({
   onCrop,
   onStartSwap,
   onReplaceWithFile,
+  onResize,
 }: TileProps) {
   const element = useRef<HTMLDivElement>(null);
   const drag = useRef<{x: number; y: number; crop: Crop; width: number; height: number; moved: boolean} | null>(null);
@@ -129,7 +135,7 @@ function Tile({
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       const {photo: current, onCrop: crop} = latest.current;
-      const zoom = clamp(current.crop.zoom * Math.exp(-event.deltaY * 0.01), 1, MAX_ZOOM);
+      const zoom = clamp(current.crop.zoom * Math.exp(-event.deltaY * 0.01), MIN_ZOOM, MAX_ZOOM);
       crop(current.id, {...current.crop, zoom});
     };
     tile.addEventListener('wheel', onWheel, {passive: false});
@@ -138,7 +144,7 @@ function Tile({
   }, []);
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest('.grip')) return;
+    if ((event.target as HTMLElement).closest('.grip, .resize-handle')) return;
     onSelect(photo.id);
     // On a touch screen the first tap only chooses the photo, so the page still scrolls under a finger.
     if ('mouse' !== event.pointerType && !selected) return;
@@ -166,6 +172,30 @@ function Tile({
 
   const endDrag = () => (drag.current = null);
 
+  /** Dragging the corner resizes the photo in whole squares, live, as the sheet makes room. */
+  const resize = useRef<{x: number; y: number; square: number; across: number; down: number} | null>(null);
+  const onResizeStart = (event: PointerEvent<HTMLSpanElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = element.current!.getBoundingClientRect();
+    resize.current = {
+      x: event.clientX,
+      y: event.clientY,
+      square: rect.width / placement.across,
+      across: placement.across,
+      down: placement.down,
+    };
+  };
+  const onResizeMove = (event: PointerEvent<HTMLSpanElement>) => {
+    const start = resize.current;
+    if (!start) return;
+    const across = clamp(Math.round(start.across + (event.clientX - start.x) / start.square), 1, sheet.across);
+    const down = clamp(Math.round(start.down + (event.clientY - start.y) / start.square), 1, sheet.down);
+    if (across !== placement.across || down !== placement.down) onResize(photo.id, {across, down});
+  };
+  const endResize = () => (resize.current = null);
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const moves: Record<string, [number, number]> = {
       ArrowLeft: [KEY_STEP, 0],
@@ -179,7 +209,7 @@ function Tile({
       onCrop(photo.id, panCrop(photo.crop, moveX, moveY, photoAspect, frameAspect));
     } else if ('+' === event.key || '=' === event.key || '-' === event.key) {
       event.preventDefault();
-      const zoom = clamp(photo.crop.zoom * ('-' === event.key ? 1 / 1.1 : 1.1), 1, MAX_ZOOM);
+      const zoom = clamp(photo.crop.zoom * ('-' === event.key ? 1 / 1.1 : 1.1), MIN_ZOOM, MAX_ZOOM);
       onCrop(photo.id, {...photo.crop, zoom});
     }
   };
@@ -234,6 +264,19 @@ function Tile({
       >
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="M6 3v14M6 3 3 6M6 3l3 3M14 17V3M14 17l-3-3M14 17l3-3" />
+        </svg>
+      </span>
+      <span
+        className="resize-handle"
+        aria-hidden="true"
+        title={`Drag to resize: ${placement.across} × ${placement.down} squares`}
+        onPointerDown={onResizeStart}
+        onPointerMove={onResizeMove}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
+      >
+        <svg viewBox="0 0 20 20">
+          <path d="M16 8v8H8M16 16 6 6" />
         </svg>
       </span>
     </div>

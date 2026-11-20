@@ -547,7 +547,7 @@ label.free-slot {
 .tile {
   position: absolute;
   overflow: hidden;
-  background: #ececec;
+  background: var(--paper);
   cursor: grab;
 }
 
@@ -613,6 +613,38 @@ label.free-slot {
 .tile.selected .grip,
 .tile:focus-visible .grip {
   opacity: 1;
+}
+
+/* The corner handle that resizes the chosen photo, square by square. */
+.resize-handle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 4;
+  display: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  background: var(--yellow);
+  color: var(--ink);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.resize-handle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tile.selected .resize-handle {
+  display: grid;
 }
 
 .free-slot {
@@ -861,17 +893,60 @@ input[type='range'] {
   flex: 0 0 auto;
 }
 
-/* The album picker. */
-.album-dialog {
-  width: min(760px, calc(100vw - 32px));
-  max-height: min(86vh, 900px);
-  margin: auto;
-  overflow-y: auto;
-  color: var(--ink);
+/* The album picker: a panel at the top of the side column; on phones, a drawer from the bottom. */
+.album-scrim {
+  display: none;
 }
 
-.album-dialog::backdrop {
-  background: rgba(17, 17, 17, 0.55);
+.album-panel {
+  overflow: visible;
+}
+
+.album-panel > .panel-head:first-child {
+  background: var(--green);
+  color: var(--ink);
+  border-radius: calc(var(--radius) - 3px) calc(var(--radius) - 3px) 0 0;
+}
+
+.album-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 -18px;
+  padding: 10px 18px;
+  border-block: 2.5px solid var(--ink);
+  background: var(--yellow);
+}
+
+.album-count {
+  flex: 1 1 140px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.album-title {
+  margin: 0;
+  color: var(--maroon);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 700;
+}
+
+.album-added {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  padding: 1px 7px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .album-form {
@@ -892,15 +967,6 @@ input[type='range'] {
   border-radius: var(--radius);
   background: var(--yellow);
   font-weight: 650;
-}
-
-.album-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-weight: 700;
 }
 
 .album-bar-buttons {
@@ -1023,6 +1089,17 @@ input[type='range'] {
   animation: appear 0.2s 0.4s both;
 }
 
+@keyframes drawer-up {
+  from {
+    transform: translateY(48px);
+    opacity: 0.6;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 @keyframes appear {
   from {
     opacity: 0;
@@ -1099,6 +1176,33 @@ input[type='range'] {
     box-shadow:
       0 -4px 0 var(--ink),
       0 10px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  .album-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 34;
+    display: block;
+    background: rgba(17, 17, 17, 0.5);
+  }
+
+  .album-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    max-height: 86vh;
+    overflow-y: auto;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -5px 0 var(--ink);
+    animation: drawer-up 220ms ease-out;
+  }
+
+  .album-panel > .panel-head:first-child {
+    border-radius: 15px 15px 0 0;
   }
 
   .app.has-selection .layout {

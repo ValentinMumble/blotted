@@ -2,7 +2,7 @@
 // screen only ever shows a light copy (1400 px on the long side), and an original is opened only while one export
 // draws it, one at a time. Keeping a phone camera's 12 to 24 megapixel originals open is what made Safari reload.
 
-import type {Crop} from './layout';
+import type {Crop, SquareSize} from './layout';
 
 export interface Photo {
   id: string;
@@ -17,6 +17,10 @@ export interface Photo {
   height: number;
   spanX: number;
   spanY: number;
+  /** A size of its own in squares, set by resizing it; none means it follows the sheet. */
+  size?: SquareSize | null;
+  /** For a photo added from a shared album: its address there, so the picker knows it is on the sheet. */
+  source?: string;
   crop: Crop;
 }
 

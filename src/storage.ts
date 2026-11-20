@@ -1,13 +1,15 @@
 // Everything stays on this device: the settings in localStorage, the photos and their layout in IndexedDB, so the
 // sheet is back as it was on the next visit. Nothing is ever sent anywhere.
 
-import {cleanSettings, type Crop, type Settings} from './layout';
+import {cleanSettings, type Crop, type Settings, type SquareSize} from './layout';
 
 export interface StoredPhoto {
   id: string;
   name: string;
   spanX: number;
   spanY: number;
+  size?: SquareSize | null;
+  source?: string;
   crop: Crop;
 }
 

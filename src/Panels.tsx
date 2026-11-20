@@ -4,9 +4,11 @@ import {
   DEFAULT_SETTINGS,
   LIMITS,
   MAX_ZOOM,
+  MIN_ZOOM,
   cm,
   dotStep,
   type Paper,
+  type Placement,
   type Settings,
   type Sheet,
   type Sizing,
@@ -104,10 +106,12 @@ function NumberField({
 interface InspectorProps {
   photo: Photo;
   sheet: Sheet;
+  placement: Placement | undefined;
   index: number;
   count: number;
   onChange: (changes: Partial<Photo>) => void;
   onReplace: () => void;
+  onDuplicate: () => void;
   onMove: (offset: number) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -116,17 +120,21 @@ interface InspectorProps {
 export function Inspector({
   photo,
   sheet,
+  placement,
   index,
   count,
   onChange,
   onReplace,
+  onDuplicate,
   onMove,
   onRemove,
   onClose,
 }: InspectorProps) {
-  const spanValue = SPANS.findIndex(span => span.spanX === photo.spanX && span.spanY === photo.spanY);
-  const width = Math.min(photo.spanX, sheet.columns) * sheet.slotWidth;
-  const height = Math.min(photo.spanY, sheet.rows) * sheet.slotHeight;
+  const spanValue = photo.size
+    ? null
+    : SPANS.findIndex(span => span.spanX === photo.spanX && span.spanY === photo.spanY);
+  const across = placement?.across ?? sheet.squaresX;
+  const down = placement?.down ?? sheet.squaresY;
   const zoomId = useId();
 
   return (
@@ -151,12 +159,38 @@ export function Inspector({
           label="Photo size"
           options={SPANS.map((span, spanIndex) => ({value: spanIndex, label: span.label}))}
           value={spanValue}
-          onChange={spanIndex => onChange({spanX: SPANS[spanIndex].spanX, spanY: SPANS[spanIndex].spanY})}
+          onChange={spanIndex => onChange({spanX: SPANS[spanIndex].spanX, spanY: SPANS[spanIndex].spanY, size: null})}
         />
-        <p className="hint">
-          {cm(width)} × {cm(height)} cm
-        </p>
       </div>
+      <div className="field-grid">
+        <NumberField
+          label="Across"
+          unit="squares"
+          value={across}
+          min={1}
+          max={sheet.across}
+          step={1}
+          onChange={value => onChange({size: {across: Math.round(value), down}})}
+        />
+        <NumberField
+          label="Down"
+          unit="squares"
+          value={down}
+          min={1}
+          max={sheet.down}
+          step={1}
+          onChange={value => onChange({size: {across, down: Math.round(value)}})}
+        />
+      </div>
+      <p className="hint">
+        {cm(across * (sheet.slotWidth / sheet.squaresX))} × {cm(down * (sheet.slotHeight / sheet.squaresY))} cm. Or drag
+        the photo's corner.{' '}
+        {photo.size ? (
+          <button type="button" className="link-button" onClick={() => onChange({size: null})}>
+            Back to the sheet's size
+          </button>
+        ) : null}
+      </p>
 
       <div className="field">
         <label className="field-label" htmlFor={zoomId}>
@@ -165,13 +199,15 @@ export function Inspector({
         <input
           id={zoomId}
           type="range"
-          min={1}
+          min={MIN_ZOOM}
           max={MAX_ZOOM}
           step={0.01}
           value={photo.crop.zoom}
           onChange={event => onChange({crop: {...photo.crop, zoom: Number(event.target.value)}})}
         />
-        <p className="hint">Drag the photo to choose what shows. Pinch to zoom.</p>
+        <p className="hint">
+          Drag the photo to choose what shows. Pinch to zoom. Below 1, the whole photo shows with white around it.
+        </p>
       </div>
 
       <div className="button-row">
@@ -190,6 +226,9 @@ export function Inspector({
         </label>
         <button type="button" className="button" onClick={() => onChange({crop: DEFAULT_CROP})}>
           Reset crop
+        </button>
+        <button type="button" className="button" onClick={onDuplicate}>
+          Duplicate
         </button>
       </div>
       <div className="button-row">

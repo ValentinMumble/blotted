@@ -56,32 +56,45 @@ export interface Crop {
 }
 
 export const DEFAULT_CROP: Crop = {zoom: 1, focusX: 0.5, focusY: 0.5};
+/** Below 1 the whole photo shows, smaller than its frame, with white around it. */
+export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 5;
+
+/** A size in whole squares. */
+export interface SquareSize {
+  across: number;
+  down: number;
+}
 
 export interface LayoutItem {
   id: string;
-  /** How many photo slots the photo covers across and down. */
+  /** How many of the sheet's photo sizes the photo covers across and down (Normal, Wide, Tall, Big). */
   spanX: number;
   spanY: number;
+  /** A size of its own in squares, which wins over the spans. */
+  size?: SquareSize | null;
 }
 
 export interface Placement {
   id: string;
   page: number;
-  column: number;
-  row: number;
-  spanX: number;
-  spanY: number;
+  /** Where it sits on the page's grid, and its size, in squares. */
+  squareX: number;
+  squareY: number;
+  across: number;
+  down: number;
+  /** The same, in millimetres on the paper. */
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
+/** An empty place the size of one photo, shown as a + to add more. */
 export interface FreeSlot {
   page: number;
-  column: number;
-  row: number;
+  squareX: number;
+  squareY: number;
   x: number;
   y: number;
   width: number;
@@ -91,21 +104,18 @@ export interface FreeSlot {
 export interface Sheet {
   width: number;
   height: number;
-  /** Photo slots across and down one page. */
-  columns: number;
-  rows: number;
   /** The full grid of squares printed on each page: its corner, and its squares across and down. */
   gridX: number;
   gridY: number;
   across: number;
   down: number;
-  /** One photo slot, in squares and in millimetres. */
+  /** The sheet's photo size, in squares and in millimetres, and how many of them fit across and down a page. */
   squaresX: number;
   squaresY: number;
   slotWidth: number;
   slotHeight: number;
-  originX: number;
-  originY: number;
+  columns: number;
+  rows: number;
   pageCount: number;
   placements: Placement[];
   freeSlots: FreeSlot[];
@@ -143,82 +153,82 @@ const squaresOnPaper = (settings: Settings) => {
 };
 
 /**
- * Lays the photos out with slots of the given size, in order, on as many pages as they need: each one takes the first
- * free place where it fits, row by row, so a small photo can fill a gap a bigger one left.
+ * Lays the photos out on the grid of squares, in order, on as many pages as they need: each one takes the first free
+ * place where it fits, square by square and row by row, so a smaller photo fills a gap a bigger one left. A photo is
+ * the sheet's photo size times its spans, or its own size. The free places left get a + each, and the whole is
+ * centred on the page to the nearest square, so every photo edge is a cut line.
  */
 const packSheet = (settings: Settings, items: LayoutItem[], squaresX: number, squaresY: number): Sheet | null => {
   const {width, height} = PAPERS[settings.paper];
   const {across, down} = squaresOnPaper(settings);
+  if (squaresX < 1 || squaresY < 1 || squaresX > across || squaresY > down) return null;
   const columns = Math.floor(across / squaresX);
   const rows = Math.floor(down / squaresY);
-  if (columns < 1 || rows < 1) return null;
 
-  const slotWidth = squaresX * settings.square;
-  const slotHeight = squaresY * settings.square;
-  // The photos sit on the full grid, centred to the nearest square, so their edges are cut lines.
-  const gridX = (width - across * settings.square) / 2;
-  const gridY = (height - down * settings.square) / 2;
-  const originX = gridX + Math.floor((across - columns * squaresX) / 2) * settings.square;
-  const originY = gridY + Math.floor((down - rows * squaresY) / 2) * settings.square;
-  const pages: boolean[][][] = [];
-  const emptyPage = () => Array.from({length: rows}, () => Array<boolean>(columns).fill(false));
-  const fits = (page: boolean[][], column: number, row: number, spanX: number, spanY: number) => {
-    if (column + spanX > columns || row + spanY > rows) return false;
-    for (let line = row; line < row + spanY; line++)
-      for (let cell = column; cell < column + spanX; cell++) if (page[line][cell]) return false;
+  const pages: Uint8Array[] = [];
+  const fits = (page: Uint8Array, left: number, top: number, wide: number, tall: number) => {
+    for (let row = top; row < top + tall; row++)
+      for (let column = left; column < left + wide; column++) if (page[row * across + column]) return false;
 
     return true;
   };
+  const take = (page: Uint8Array, left: number, top: number, wide: number, tall: number) => {
+    for (let row = top; row < top + tall; row++) page.fill(1, row * across + left, row * across + left + wide);
+  };
+  const firstFit = (page: Uint8Array, wide: number, tall: number) => {
+    for (let top = 0; top + tall <= down; top++)
+      for (let left = 0; left + wide <= across; left++) if (fits(page, left, top, wide, tall)) return {left, top};
 
-  const placements: Placement[] = [];
+    return null;
+  };
+
+  type Spot = {page: number; squareX: number; squareY: number; across: number; down: number};
+  const placed: (Spot & {id: string})[] = [];
   for (const item of items) {
-    const spanX = clamp(Math.round(item.spanX), 1, columns);
-    const spanY = clamp(Math.round(item.spanY), 1, rows);
-    for (let pageIndex = 0; ; pageIndex++) {
-      pages[pageIndex] ??= emptyPage();
-      const page = pages[pageIndex];
-      let placed = false;
-      for (let row = 0; row < rows && !placed; row++) {
-        for (let column = 0; column < columns && !placed; column++) {
-          if (!fits(page, column, row, spanX, spanY)) continue;
-          for (let line = row; line < row + spanY; line++)
-            for (let cell = column; cell < column + spanX; cell++) page[line][cell] = true;
-          placements.push({
-            id: item.id,
-            page: pageIndex,
-            column,
-            row,
-            spanX,
-            spanY,
-            x: originX + column * slotWidth,
-            y: originY + row * slotHeight,
-            width: spanX * slotWidth,
-            height: spanY * slotHeight,
-          });
-          placed = true;
-        }
-      }
-      if (placed) break;
+    const wide = item.size
+      ? clamp(Math.round(item.size.across), 1, across)
+      : clamp(Math.round(item.spanX), 1, columns) * squaresX;
+    const tall = item.size
+      ? clamp(Math.round(item.size.down), 1, down)
+      : clamp(Math.round(item.spanY), 1, rows) * squaresY;
+    for (let page = 0; ; page++) {
+      pages[page] ??= new Uint8Array(across * down);
+      const spot = firstFit(pages[page], wide, tall);
+      if (!spot) continue;
+      take(pages[page], spot.left, spot.top, wide, tall);
+      placed.push({id: item.id, page, squareX: spot.left, squareY: spot.top, across: wide, down: tall});
+      break;
     }
   }
 
   const pageCount = Math.max(1, pages.length);
-  const freeSlots: FreeSlot[] = [];
-  for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-    const page = pages[pageIndex] ?? emptyPage();
-    for (let row = 0; row < rows; row++)
-      for (let column = 0; column < columns; column++)
-        if (!page[row][column])
-          freeSlots.push({
-            page: pageIndex,
-            column,
-            row,
-            x: originX + column * slotWidth,
-            y: originY + row * slotHeight,
-            width: slotWidth,
-            height: slotHeight,
-          });
+  const free: Spot[] = [];
+  for (let page = 0; page < pageCount; page++) {
+    pages[page] ??= new Uint8Array(across * down);
+    for (let spot = firstFit(pages[page], squaresX, squaresY); spot; spot = firstFit(pages[page], squaresX, squaresY)) {
+      take(pages[page], spot.left, spot.top, squaresX, squaresY);
+      free.push({page, squareX: spot.left, squareY: spot.top, across: squaresX, down: squaresY});
+    }
   }
+
+  const spots = [...placed, ...free];
+  const minX = Math.min(...spots.map(spot => spot.squareX));
+  const minY = Math.min(...spots.map(spot => spot.squareY));
+  const usedAcross = Math.max(...spots.map(spot => spot.squareX + spot.across)) - minX;
+  const usedDown = Math.max(...spots.map(spot => spot.squareY + spot.down)) - minY;
+  const shiftX = Math.floor((across - usedAcross) / 2) - minX;
+  const shiftY = Math.floor((down - usedDown) / 2) - minY;
+  const gridX = (width - across * settings.square) / 2;
+  const gridY = (height - down * settings.square) / 2;
+  const onPaper = (spot: Spot) => ({
+    page: spot.page,
+    squareX: spot.squareX + shiftX,
+    squareY: spot.squareY + shiftY,
+    x: gridX + (spot.squareX + shiftX) * settings.square,
+    y: gridY + (spot.squareY + shiftY) * settings.square,
+    width: spot.across * settings.square,
+    height: spot.down * settings.square,
+  });
 
   return {
     width,
@@ -227,24 +237,22 @@ const packSheet = (settings: Settings, items: LayoutItem[], squaresX: number, sq
     gridY,
     across,
     down,
-    columns,
-    rows,
     squaresX,
     squaresY,
-    slotWidth,
-    slotHeight,
-    originX,
-    originY,
+    slotWidth: squaresX * settings.square,
+    slotHeight: squaresY * settings.square,
+    columns,
+    rows,
     pageCount,
-    placements,
-    freeSlots,
+    placements: placed.map(spot => ({id: spot.id, across: spot.across, down: spot.down, ...onPaper(spot)})),
+    freeSlots: free.map(onPaper),
   };
 };
 
 /**
- * Lays the photos out. Fixed: slots of the set size. Auto: the biggest slots of the photo shape, in whole squares,
- * that still fit every photo on one page; past the smallest size, the photos go on more pages. Null when not even one
- * photo slot fits the paper.
+ * Lays the photos out. Fixed: the set photo size. Auto: the biggest photo size of the photo shape, in whole squares,
+ * that still fits every photo on one page; past the smallest size, the photos go on more pages. Photos with a size
+ * of their own keep it either way. Null when not even one photo fits the paper.
  */
 export const computeSheet = (settings: Settings, items: LayoutItem[]): Sheet | null => {
   if ('fixed' === settings.sizing) return packSheet(settings, items, settings.slotWidth, settings.slotHeight);
@@ -265,8 +273,8 @@ export const computeSheet = (settings: Settings, items: LayoutItem[]): Sheet | n
 };
 
 /**
- * How the photo sits in its frame, as fractions of the frame: its size, and its top-left corner (zero or less, as it
- * always covers the frame).
+ * How the photo sits in its frame, as fractions of the frame: its size, and its top-left corner. At zoom 1 or more it
+ * covers the frame; below 1 it is smaller than the frame, and the focus places it inside.
  */
 export const coverBox = (photoAspect: number, frameAspect: number, crop: Crop) => {
   const wider = photoAspect > frameAspect;
@@ -276,15 +284,25 @@ export const coverBox = (photoAspect: number, frameAspect: number, crop: Crop) =
   return {width, height, left: (1 - width) * crop.focusX, top: (1 - height) * crop.focusY};
 };
 
-/** The part of the photo that shows, in the photo's own pixels. */
-export const sourceRect = (photoWidth: number, photoHeight: number, frameAspect: number, crop: Crop) => {
+/**
+ * What to draw: the part of the photo that shows, in its own pixels, and where it goes in the frame, as fractions of
+ * the frame. Whether the photo is bigger than its frame (cropped) or smaller (white around it).
+ */
+export const drawPlan = (photoWidth: number, photoHeight: number, frameAspect: number, crop: Crop) => {
   const box = coverBox(photoWidth / photoHeight, frameAspect, crop);
+  const left = Math.max(0, box.left);
+  const top = Math.max(0, box.top);
+  const right = Math.min(1, box.left + box.width);
+  const bottom = Math.min(1, box.top + box.height);
 
   return {
-    x: (-box.left / box.width) * photoWidth,
-    y: (-box.top / box.height) * photoHeight,
-    width: photoWidth / box.width,
-    height: photoHeight / box.height,
+    source: {
+      x: ((left - box.left) / box.width) * photoWidth,
+      y: ((top - box.top) / box.height) * photoHeight,
+      width: ((right - left) / box.width) * photoWidth,
+      height: ((bottom - top) / box.height) * photoHeight,
+    },
+    target: {x: left, y: top, width: right - left, height: bottom - top},
   };
 };
 
@@ -294,8 +312,8 @@ export const panCrop = (crop: Crop, dragX: number, dragY: number, photoAspect: n
 
   return {
     ...crop,
-    focusX: box.width > 1 + EPSILON ? clamp(crop.focusX - dragX / (box.width - 1), 0, 1) : crop.focusX,
-    focusY: box.height > 1 + EPSILON ? clamp(crop.focusY - dragY / (box.height - 1), 0, 1) : crop.focusY,
+    focusX: Math.abs(box.width - 1) > EPSILON ? clamp(crop.focusX - dragX / (box.width - 1), 0, 1) : crop.focusX,
+    focusY: Math.abs(box.height - 1) > EPSILON ? clamp(crop.focusY - dragY / (box.height - 1), 0, 1) : crop.focusY,
   };
 };
 

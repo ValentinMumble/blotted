@@ -1,9 +1,9 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
 import {Backdrop} from './Backdrop';
 import {downloadAlbumPhoto, type AlbumPhoto} from './album';
-import {AlbumDialog} from './AlbumDialog';
+import {AlbumPicker} from './AlbumPicker';
 import {download, exportPageImage, exportPdf, type ExportPhoto} from './exporters';
-import {DEFAULT_CROP, cleanSettings, cm, computeSheet, type Crop, type Settings} from './layout';
+import {DEFAULT_CROP, cleanSettings, cm, computeSheet, type Crop, type Settings, type SquareSize} from './layout';
 import {Inspector, SettingsPanel} from './Panels';
 import {ADD_PHOTOS_INPUT, REPLACE_PHOTO_INPUT, newId, openPickerOnKey, openPhoto, type Photo} from './photos';
 import {SheetView} from './SheetView';
@@ -33,13 +33,25 @@ export function App() {
   const [albumOpen, setAlbumOpen] = useState(false);
   const replaceTarget = useRef<string | null>(null);
 
+  // The layout only changes with the photos' order and sizes, not with a crop: dragging a photo stays smooth.
+  const layoutKey = photos
+    .map(
+      photo =>
+        `${photo.id}:${photo.spanX}x${photo.spanY}:${photo.size ? `${photo.size.across}x${photo.size.down}` : ''}`,
+    )
+    .join('|');
   const sheet = useMemo(
     () =>
       computeSheet(
         settings,
-        photos.map(photo => ({id: photo.id, spanX: photo.spanX, spanY: photo.spanY})),
+        photos.map(({id, spanX, spanY, size}) => ({id, spanX, spanY, size})),
       ),
-    [settings, photos],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [settings, layoutKey],
+  );
+  const addedFromAlbums = useMemo(
+    () => new Set(photos.map(photo => photo.source).filter((source): source is string => Boolean(source))),
+    [photos],
   );
   const photosById = useMemo(() => new Map(photos.map(photo => [photo.id, photo])), [photos]);
   const selectedIndex = photos.findIndex(photo => photo.id === selectedId);
@@ -82,7 +94,10 @@ export function App() {
   useEffect(() => {
     if (!loaded) return;
     const timer = setTimeout(
-      () => savePhotoList(photos.map(({id, name, spanX, spanY, crop}) => ({id, name, spanX, spanY, crop}))),
+      () =>
+        savePhotoList(
+          photos.map(({id, name, spanX, spanY, size, source, crop}) => ({id, name, spanX, spanY, size, source, crop})),
+        ),
       SAVE_DELAY_MS,
     );
 
@@ -110,7 +125,10 @@ export function App() {
    * loader counts the rest. What could not be read is listed in one message.
    */
   const addSources = useCallback(
-    async (sources: {name: string; load: () => Promise<Blob>}[], failure: (names: string[]) => string) => {
+    async (
+      sources: {name: string; load: () => Promise<Blob>; source?: string}[],
+      failure: (names: string[]) => string,
+    ) => {
       if (!sources.length) return;
       startAdding(sources.length);
       const unreadable: string[] = [];
@@ -119,7 +137,15 @@ export function App() {
           const opened = await openPhoto(await source.load());
           const id = newId();
           await saveBlob(id, opened.blob);
-          const photo: Photo = {id, name: source.name, ...opened, spanX: 1, spanY: 1, crop: DEFAULT_CROP};
+          const photo: Photo = {
+            id,
+            name: source.name,
+            ...opened,
+            spanX: 1,
+            spanY: 1,
+            source: source.source,
+            crop: DEFAULT_CROP,
+          };
           setPhotos(current => [...current, photo]);
         } catch {
           unreadable.push(source.name);
@@ -144,7 +170,11 @@ export function App() {
 
   const addAlbumPhotos = (albumPhotos: AlbumPhoto[]) =>
     addSources(
-      albumPhotos.map((photo, index) => ({name: `Album photo ${index + 1}`, load: () => downloadAlbumPhoto(photo)})),
+      albumPhotos.map((photo, index) => ({
+        name: `Album photo ${index + 1}`,
+        load: () => downloadAlbumPhoto(photo),
+        source: photo.url,
+      })),
       names => `Couldn't get ${names.length} ${1 === names.length ? 'photo' : 'photos'} from the album. Try again.`,
     );
 
@@ -176,6 +206,23 @@ export function App() {
   }, []);
 
   const setCrop = useCallback((id: string, crop: Crop) => updatePhoto(id, {crop}), [updatePhoto]);
+  const resizePhoto = useCallback((id: string, size: SquareSize) => updatePhoto(id, {size}), [updatePhoto]);
+
+  /** A copy of the photo right after it, with its size and crop, chosen so it can be changed at once. */
+  const duplicatePhoto = async (id: string) => {
+    const original = photosById.get(id);
+    if (!original) return;
+    const copyId = newId();
+    await saveBlob(copyId, original.blob);
+    const copy: Photo = {...original, id: copyId, url: URL.createObjectURL(original.preview)};
+    setPhotos(current => {
+      const next = [...current];
+      next.splice(next.findIndex(photo => photo.id === id) + 1, 0, copy);
+
+      return next;
+    });
+    setSelectedId(copyId);
+  };
 
   const removePhoto = (id: string) => {
     const photo = photosById.get(id);
@@ -289,7 +336,9 @@ export function App() {
   // Escape lets go of the chosen photo; a pasted image is added.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ('Escape' === event.key) setSelectedId(null);
+      if ('Escape' !== event.key) return;
+      setSelectedId(null);
+      setAlbumOpen(false);
     };
     const onPaste = (event: ClipboardEvent) => {
       const files = [...(event.clipboardData?.files ?? [])].filter(file => file.type.startsWith('image/'));
@@ -444,6 +493,7 @@ export function App() {
                         onCrop={setCrop}
                         onStartSwap={startSwap}
                         onReplaceWithFile={replacePhoto}
+                        onResize={resizePhoto}
                       />
                     </div>
                   </figure>
@@ -464,16 +514,21 @@ export function App() {
         </main>
 
         <aside className="side">
+          {albumOpen ? (
+            <AlbumPicker added={addedFromAlbums} onClose={() => setAlbumOpen(false)} onAdd={addAlbumPhotos} />
+          ) : null}
           {selected && sheet ? (
             <Inspector
               photo={selected}
               sheet={sheet}
+              placement={sheet.placements.find(placement => placement.id === selected.id)}
               index={selectedIndex}
               count={photos.length}
               onChange={changes => updatePhoto(selected.id, changes)}
               onReplace={() => {
                 replaceTarget.current = selected.id;
               }}
+              onDuplicate={() => duplicatePhoto(selected.id)}
               onMove={offset => movePhoto(selected.id, offset)}
               onRemove={() => removePhoto(selected.id)}
               onClose={() => setSelectedId(null)}
@@ -494,7 +549,6 @@ export function App() {
           <img src={swapPhoto.url} alt="" />
         </div>
       ) : null}
-      <AlbumDialog open={albumOpen} onClose={() => setAlbumOpen(false)} onAdd={addAlbumPhotos} />
       {adding || !loaded ? (
         <div className={['loader', !loaded && !adding && 'restoring'].filter(Boolean).join(' ')} role="status">
           <span className="loader-ring" aria-hidden="true" />

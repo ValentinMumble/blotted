@@ -5,7 +5,7 @@ import {
   DOT_COLOUR,
   DOT_DIAMETER,
   dotPositions,
-  sourceRect,
+  drawPlan,
   type Crop,
   type Placement,
   type Settings,
@@ -45,9 +45,22 @@ const drawPhoto = (
   height: number,
 ): Promise<void> => {
   const draw = (image: CanvasImageSource, imageWidth: number, imageHeight: number) => {
-    const source = sourceRect(imageWidth, imageHeight, width / height, photo.crop);
+    const {source, target} = drawPlan(imageWidth, imageHeight, width / height, photo.crop);
+    // Zoomed out, the photo is smaller than its frame: the rest of the frame is white paper.
+    context.fillStyle = '#ffffff';
+    context.fillRect(x, y, width, height);
     context.imageSmoothingQuality = 'high';
-    context.drawImage(image, source.x, source.y, source.width, source.height, x, y, width, height);
+    context.drawImage(
+      image,
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+      x + target.x * width,
+      y + target.y * height,
+      target.width * width,
+      target.height * height,
+    );
   };
 
   // A phone short of memory may not open a very big original: the export then uses the screen copy, never fails.

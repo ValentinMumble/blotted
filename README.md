@@ -14,11 +14,13 @@ The screenshots use drawn sample images, not real photos.
 
 - **Add photos**: the button, drag and drop, or paste. On iOS the button opens the photo library. A loader counts
   the photos in. Photos are kept at full size for the exports; the screen shows light copies, so any phone copes.
-- **Album link**: paste a Google Photos album shared by link, tick the photos, add them at full size. The server
-  reads the album's public page (`api/album.ts`, Google has no API for shared albums) and passes the photos
-  through, as Google serves them without CORS headers.
-- **Arrange**: drag a photo to choose what shows, pinch (or Ctrl and the wheel) to zoom, drag its ⇅ handle onto
-  another photo to swap them. Each photo can be Normal, Wide, Tall or Big.
+- **Album link**: paste a Google Photos album shared by link, tick the photos, add them at full size. Photos already
+  on the sheet start unticked. The picker sits in the side column (a drawer on phones). The server reads the
+  album's public page (`api/album.ts`, Google has no API for shared albums) and passes the photos through, as
+  Google serves them without CORS headers.
+- **Arrange**: drag a photo to choose what shows, pinch (or Ctrl and the wheel) to zoom in or out (below 1 the whole
+  photo shows, with white around it), drag its ⇅ handle onto another photo to swap them. Each photo can be Normal,
+  Wide, Tall, Big, or any size in squares: drag its corner or type it. Duplicate copies a photo.
 - **Sheet**: A4 or Letter, square size (0.8 cm by default; the usual blotter is ¼ in), photo shape (3:4, 1:1, 4:3),
   blank edge for the printer, dot spacing. Photos fit the page by default: they grow to fill it and shrink as more
   are added, in whole squares; or set a fixed size.
