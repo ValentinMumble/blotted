@@ -660,6 +660,7 @@ label.free-slot {
 
 .panel {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 14px;
   padding: 0 18px 18px;

@@ -313,7 +313,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            🖼️
+            🎟️
           </span>
           <h1>
             Blotted <small>since 1943</small>
