@@ -13,7 +13,9 @@ export interface StoredPhoto {
   crop: Crop;
 }
 
-const SETTINGS_KEY = 'blotted.settings.v2';
+const SETTINGS_KEY = 'blotted.settings.v3';
+/** Settings saved when the dots came 4 mm apart by default: kept, except the dot spacing. */
+const OLD_SETTINGS_KEY = 'blotted.settings.v2';
 const DATABASE = 'blotted';
 const BLOBS = 'blobs';
 const PROJECT = 'project';
@@ -22,8 +24,11 @@ const PHOTOS_KEY = 'photos';
 export const loadSettings = (): Settings => {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return cleanSettings(JSON.parse(raw));
+    const old = JSON.parse(localStorage.getItem(OLD_SETTINGS_KEY) ?? '{}');
+    delete old.dotSpacing;
 
-    return cleanSettings(raw ? JSON.parse(raw) : {});
+    return cleanSettings(old);
   } catch {
     return cleanSettings({});
   }

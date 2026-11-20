@@ -24,7 +24,8 @@ The screenshots use drawn sample images, not real photos.
 - **Sheet**: A4 or Letter, square size (0.8 cm by default; the usual blotter is ¼ in), photo shape (3:4, 1:1, 4:3),
   blank edge for the printer, dot spacing. Photos fit the page by default: they grow to fill it and shrink as more
   are added, in whole squares; or set a fixed size.
-- **Grid**: black dots on every square of the page, empty places included; photo edges are always cut lines.
+- **Grid**: a black dot at each corner of every square of the page, empty places included (a smaller dot spacing
+  adds dots along the sides); photo edges are always cut lines.
 - **Export**: a PDF at the paper's exact size (vector dots, photos at 300 dpi), or a JPEG of one page. Print at 100%.
 - Photos and layout stay on the device (IndexedDB); your own photos are never uploaded. Works offline once opened.
 

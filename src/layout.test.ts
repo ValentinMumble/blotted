@@ -125,8 +125,9 @@ describe('crop', () => {
 });
 
 describe('dots', () => {
-  test('4 mm apart by default: both corners and the middle of each square side', () => {
-    expect(dotStep(DEFAULT_SETTINGS)).toBe(4);
+  test('a dot at each corner only by default, the usual blotter square too', () => {
+    expect(dotStep(DEFAULT_SETTINGS)).toBe(8);
+    expect(dotStep({...DEFAULT_SETTINGS, square: 6.35})).toBe(6.35);
   });
 
   test('the whole grid, empty places too, each dot once', () => {

@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   slotWidth: 6,
   slotHeight: 8,
   margin: 8,
-  dotSpacing: 4,
+  dotSpacing: 8,
 };
 
 export const LIMITS = {
